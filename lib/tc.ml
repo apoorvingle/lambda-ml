@@ -1,5 +1,6 @@
 (** Type inference accepts a term and decorates the term with a type*)
-    
+open Stdlib.Result
+       
 type tcPayload = {position: Parser.position; ty: ty}
 and kind = unit Common.kind
 and ty = unit Common.ty 
@@ -34,7 +35,6 @@ module IMap = struct
   = Format.fprintf ppf
       "TypeContext: {@ %a@ }"
       pp_print_tymap ctx
-      
 end
 
 (** A typing context maps variables to types *)
@@ -46,5 +46,43 @@ type 'a tcResult = ('a, string) result
     
 let pp_print_tcCtx = IMap.pp_print_tcCtx
 
-let typeCheck: tcCtx -> Parser.term -> term tcResult = fun _ -> Common.todo __LOC__                
-let typeInfer: tcCtx -> Parser.term -> (ty * subst * term) tcResult = fun _ -> Common.todo __LOC__ 
+let lookup: tcCtx -> Common.ident -> ty =
+  fun ctx i -> IMap.find i ctx
+
+let add: tcCtx -> Common.ident -> ty -> tcCtx =
+  fun ctx i ty -> IMap.add i ty ctx 
+
+let typeError s = Error ("Type Error: " ^ s)
+let unificationError = fun expTy infTy ->
+  typeError ("Cannot unify expected type: " ^ Common.string_of_t pp_print_ty expTy
+             ^ " with infered type: " ^ Common.string_of_t pp_print_ty infTy)
+    
+let typeCheckConst: Common.const -> ty -> Common.const tcResult =
+  fun trm expTy -> match trm with
+    | Common.NumC _ ->
+      if expTy  = `TNat ()
+      then ok trm
+      else unificationError expTy (`TNat ()) 
+    | Common.BoolC _ ->
+      if expTy  = `TBool ()
+      then ok trm
+      else unificationError expTy (`TBool ()) 
+  
+
+let checkType: tcCtx -> Parser.term -> ty -> term tcResult =
+  fun ctx trm expTy -> match trm with
+    | `Var (pos, i) ->
+      let infTy = lookup ctx i in 
+      if (expTy = infTy)
+      then ok (`Var ({position=pos; ty=expTy}, i))
+      else (unificationError expTy infTy) 
+    | `Const (pos, c) -> bind (typeCheckConst c expTy) (fun c ->
+        ok (`Const ({position=pos; ty=expTy}, c)))
+    | `App _
+    | `Lam _ -> Common.todo __LOC__
+    (* | `Lam (pos, i, argTy, body) -> bind (inferType (add ctx i argTy) body) (fun (ty, _, trm') ->
+     *     if expTy = (`TArr () argTy ty)
+     *     then ok (`Lam ({position=pos, expTy}, i, argTy, trm'))
+     *     else unificationError expTy (`TArr () argTy ty)) *)
+                  
+and inferType: tcCtx -> Parser.term -> (ty * subst * term) tcResult = fun _ -> Common.todo __LOC__ 

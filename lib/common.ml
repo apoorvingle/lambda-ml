@@ -16,10 +16,13 @@ and 'a ty =
   ]    
 and 'a term =
   [ `Var of 'a * ident
-  | `Const of 'a * ident
+  | `Const of 'a * const
   | `Lam of 'a * ident * 'a ty * 'a term
   | `App of 'a * 'a term * 'a term
   ] 
+and const =
+  | NumC of int
+  | BoolC of bool
 
 let pp_print_ident ppf i = Format.fprintf ppf "@[%s@]" i
 
@@ -45,13 +48,17 @@ let rec pp_print_ty: (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a 
                           ; pp ppf pl
                           ; (pp_print_ty pp ppf ty2)
                           
+let pp_print_const: const -> unit =
+  fun c -> match c with
+    | NumC n -> Format.print_int n
+    | BoolC b -> Format.print_bool b
 
 let rec pp_print_term: (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a term -> unit =
   fun pp ppf -> function
-    | `Var (pl , i) 
-    | `Const (pl, i) -> Format.fprintf ppf "%a" pp_print_ident i
+    | `Var (pl, i) -> Format.fprintf ppf "%a" pp_print_ident i
                      ; pp ppf pl
                      ; Format.fprintf ppf ""
+    | `Const (pl, c) -> pp_print_const c; pp ppf pl 
     | `Lam (pl, i, ty, t) -> Format.fprintf ppf "λ%a:%a" 
                            pp_print_ident i (pp_print_ty pp) ty
                        ; pp ppf pl
@@ -71,3 +78,16 @@ let pp_print_prog: (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a pr
 type 'a progParser = string -> 'a program 
 
 type 'a termParser = string -> 'a term 
+
+
+let string_of_t pp t =
+  (* Create a buffer *)
+  let buf = Buffer.create 80 in
+  (* Create a formatter printing into the buffer *)
+  let ppf = Format.formatter_of_buffer buf in
+  (* Output into buffer *)
+  pp ppf t;
+  (* Flush the formatter *)
+  Format.pp_print_flush ppf ();
+  (* Return the buffer contents *)
+  Buffer.contents buf

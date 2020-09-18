@@ -16,5 +16,5 @@ val pp_print_ty: Format.formatter -> ty -> unit
 val pp_print_term: Format.formatter -> term -> unit
 
 
-val typeCheck: tcCtx -> Parser.term -> term tcResult 
+val typeCheck: tcCtx -> Parser.term -> ty -> term tcResult 
 val typeInfer: tcCtx -> Parser.term -> (ty * subst * term) tcResult
